@@ -1,0 +1,6 @@
+ocp:
+https://www.udemy.com/course/1z0-149-oracle-advanced-plsql-certification-preparation/learn/quiz/6059976#overview
+https://www.udemy.com/course/oracle-plsql-is-my-game-exam-1z0-144/learn/lecture/9221676?start=165#overview
+
+oca:
+https://www.udemy.com/course/oracle-database-sql-certified-associate-exam-1z0-071/learn/quiz/6758405#overview

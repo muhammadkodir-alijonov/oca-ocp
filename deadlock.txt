@@ -1,0 +1,311 @@
+# 🔒 DEADLOCK: Hech Qachon Unutmaydigan Misol
+
+## 📖 Hayotiy Voqea: Oshxonadagi Deadlock
+
+Tasavvur qiling: **2 ta oshpaz, 2 ta ingrediyent**
+
+### Vaziyat:
+- **Oshpaz Ali** Osh pishirmoqchi: Avval GO'SHT kerak, keyin SABZI
+- **Oshpaz Vali** Dimlama pishirmoqchi: Avval SABZI kerak, keyin GO'SHT
+
+### ⏰ Soat 12:00 - Falokat boshlanadi:
+
+```
+12:00:00 - Ali GO'SHTni oldi (lock qildi) 🥩✅
+12:00:01 - Vali SABZIni oldi (lock qildi) 🥬✅
+
+12:00:02 - Ali: "Menga SABZI kerak!"
+           Lekin SABZI Valida... KUTADI ⏳
+
+12:00:03 - Vali: "Menga GO'SHT kerak!"
+           Lekin GO'SHT Alida... KUTADI ⏳
+
+12:00:04 - Ali hali kutmoqda... ⏳⏳
+12:00:05 - Vali hali kutmoqda... ⏳⏳
+...
+ABADIY KUTISH! ♾️ DEADLOCK! 💀
+```
+
+---
+
+## 💻 Oracle PL/SQL'da Xuddi Shu Deadlock
+
+### Session 1 (Ali):
+```sql
+-- Ali boshladi
+BEGIN
+  -- 1. Birinchi GO'SHTni lock qildi
+  UPDATE mahsulotlar 
+  SET miqdor = miqdor - 1 
+  WHERE nom = 'GO''SHT';  -- ✅ LOCK olindi
+  
+  DBMS_LOCK.SLEEP(5);  -- 5 soniya kutdi (bu vaqtda Vali ham boshladi)
+  
+  -- 2. Endi SABZIni lock qilmoqchi
+  UPDATE mahsulotlar 
+  SET miqdor = miqdor - 1 
+  WHERE nom = 'SABZI';  -- ❌ KUTADI (Valida LOCK bor)
+  
+  COMMIT;
+END;
+/
+```
+
+### Session 2 (Vali):
+```sql
+-- Vali boshladi
+BEGIN
+  -- 1. Birinchi SABZIni lock qildi
+  UPDATE mahsulotlar 
+  SET miqdor = miqdor - 1 
+  WHERE nom = 'SABZI';  -- ✅ LOCK olindi
+  
+  DBMS_LOCK.SLEEP(5);  -- 5 soniya kutdi
+  
+  -- 2. Endi GO'SHTni lock qilmoqchi
+  UPDATE mahsulotlar 
+  SET miqdor = miqdor - 1 
+  WHERE nom = 'GO''SHT';  -- ❌ KUTADI (Alida LOCK bor)
+  
+  COMMIT;
+END;
+/
+```
+
+### 💥 Natija:
+```
+ORA-00060: deadlock detected while waiting for resource
+```
+
+---
+
+## 🎯 DEADLOCK ning 4 ta sharti (Barchasi bo'lishi KERAK):
+
+1. **Mutual Exclusion** - Resurs faqat bitta session egallashi mumkin
+2. **Hold and Wait** - Bir resursni ushlab turib, boshqasini kutadi
+3. **No Preemption** - Resursni majburiy ololmaysiz
+4. **Circular Wait** - Ali→Vali→Ali (doira)
+
+---
+
+## ✅ YECHIMLAR (Har doim ishlaydi!)
+
+### 1️⃣ **LOCK TARTIBINI BELGILANG** (Eng muhim!)
+
+```sql
+-- ❌ NOTO'G'RI (Deadlock bo'ladi):
+-- Ali: GO'SHT → SABZI
+-- Vali: SABZI → GO'SHT
+
+-- ✅ TO'G'RI (Deadlock bo'lmaydi):
+-- HAMMAGA QOIDA: Doim ALIFBO TARTIBIDA!
+
+-- Ali:
+BEGIN
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'GO''SHT';  -- G
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'SABZI';    -- S
+  COMMIT;
+END;
+
+-- Vali ham:
+BEGIN
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'GO''SHT';  -- G
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'SABZI';    -- S
+  COMMIT;
+END;
+```
+
+### 2️⃣ **TIMEOUT qo'ying**
+
+```sql
+-- Agar 3 soniyada olmasa, ROLLBACK qil
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER SESSION SET DDL_LOCK_TIMEOUT = 3';
+  
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'GO''SHT';
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'SABZI';
+  
+  COMMIT;
+EXCEPTION
+  WHEN OTHERS THEN
+    ROLLBACK;
+    DBMS_OUTPUT.PUT_LINE('Timeout! Qayta urinaman...');
+    -- Retry logic
+END;
+/
+```
+
+### 3️⃣ **SELECT FOR UPDATE NOWAIT**
+
+```sql
+-- Agar lock bo'lsa, darhol error ber (kutma!)
+BEGIN
+  SELECT * FROM mahsulotlar 
+  WHERE nom = 'GO''SHT' 
+  FOR UPDATE NOWAIT;  -- Agar lock bo'lsa, darhol error
+  
+  -- Agar lock olmasa bu qatorga yetmaydi
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'GO''SHT';
+  
+  COMMIT;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -54 THEN  -- Resource busy
+      DBMS_OUTPUT.PUT_LINE('Boshqa session ishlayapti, keyinroq urinaman');
+      ROLLBACK;
+    END IF;
+END;
+/
+```
+
+### 4️⃣ **PESSIMISTIC LOCKING (Hammasi oldin)**
+
+```sql
+-- Barcha kerakli resurslarni OLDINDAN lock qil
+BEGIN
+  -- Bitta transactionda hammasi:
+  SELECT * FROM mahsulotlar WHERE nom = 'GO''SHT' FOR UPDATE;
+  SELECT * FROM mahsulotlar WHERE nom = 'SABZI' FOR UPDATE;
+  
+  -- Endi ishla (deadlock bo'lmaydi):
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'GO''SHT';
+  UPDATE mahsulotlar SET miqdor = miqdor - 1 WHERE nom = 'SABZI';
+  
+  COMMIT;
+END;
+/
+```
+
+### 5️⃣ **OPTIMISTIC LOCKING (Version bilan)**
+
+```sql
+-- Table:
+-- mahsulotlar (nom, miqdor, version)
+
+BEGIN
+  -- 1. O'qish
+  SELECT miqdor, version INTO v_miqdor, v_version
+  FROM mahsulotlar WHERE nom = 'GO''SHT';
+  
+  -- 2. Update qilish (version check bilan)
+  UPDATE mahsulotlar 
+  SET miqdor = miqdor - 1, 
+      version = version + 1
+  WHERE nom = 'GO''SHT' 
+    AND version = v_version;  -- Version mos kelishi kerak!
+  
+  IF SQL%ROWCOUNT = 0 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Boshqa user o''zgartirgan! Retry!');
+  END IF;
+  
+  COMMIT;
+END;
+/
+```
+
+---
+
+## 🔍 DEADLOCK ni topish va analiz qilish
+
+```sql
+-- 1. Deadlock log ko'rish
+SELECT * FROM v$session WHERE blocking_session IS NOT NULL;
+
+-- 2. Qaysi sessionlar lock qilgan?
+SELECT 
+  s.sid,
+  s.username,
+  s.program,
+  l.type,
+  l.id1,
+  l.id2,
+  l.lmode,
+  l.request
+FROM v$lock l
+JOIN v$session s ON l.sid = s.sid
+WHERE l.type IN ('TX', 'TM');
+
+-- 3. Deadlock trace file
+-- alert_<SID>.log faylida deadlock graph ko'rinadi
+```
+
+---
+
+## 🎓 ESLAB QOLISH UCHUN QOIDA:
+
+### **"ALIFBO TAMG'ASI"** 🔤
+
+```
+A - Ali
+L - Lock
+I - In
+F - Fixed
+B - Beautiful
+O - Order
+```
+
+**Har doim bir xil tartibda lock oling!**
+- GO'SHT → SABZI ✅
+- 1-ID → 2-ID ✅
+- Table A → Table B ✅
+
+**Hech qachon teskari tartibda olma!**
+- SABZI → GO'SHT ❌
+- 2-ID → 1-ID ❌
+- Table B → Table A ❌
+
+---
+
+## 🚨 Real Production Misol (Bank)
+
+```sql
+-- ❌ XATO (Deadlock):
+-- Transaction 1:
+UPDATE hisoblar SET balans = balans - 100 WHERE id = 1;  -- Ali → Vali
+UPDATE hisoblar SET balans = balans + 100 WHERE id = 2;
+
+-- Transaction 2:
+UPDATE hisoblar SET balans = balans - 50 WHERE id = 2;   -- Vali → Ali
+UPDATE hisoblar SET balans = balans + 50 WHERE id = 1;
+
+-- ✅ TO'G'RI (ID bo'yicha tartib):
+-- DOIM KICHIK ID birinchi!
+
+-- Transaction 1:
+UPDATE hisoblar SET balans = balans - 100 WHERE id = 1;  -- 1
+UPDATE hisoblar SET balans = balans + 100 WHERE id = 2;  -- 2
+
+-- Transaction 2:
+UPDATE hisoblar SET balans = balans + 50 WHERE id = 1;   -- 1
+UPDATE hisoblar SET balans = balans - 50 WHERE id = 2;   -- 2
+```
+
+---
+
+## 📝 Interview Savoli uchun Javob:
+
+**"Deadlock nima va qanday yechiladi?"**
+
+✅ **Javob:**
+> "Deadlock - bu 2 yoki undan ortiq sessionlar bir-birini kutib, abadiy blocking holatida qolishi. Masalan, Session 1 Table A'ni lock qilib Table B'ni kutadi, Session 2 esa Table B'ni lock qilib Table A'ni kutadi.
+> 
+> **Yechim:** Barcha sessionlarda resurslarni bir xil tartibda lock qilish kerak. Masalan, doim ID yoki alfabit bo'yicha ketma-ketlikda. Qo'shimcha: timeout, NOWAIT, optimistic locking ishlatish mumkin."
+
+---
+
+## 🎬 Xulosa: Asosiy Qoidalar
+
+1. ✅ **Doim bir xil tartibda lock oling** (ID, alfabit, ...)
+2. ✅ **Timeout va NOWAIT ishlating**
+3. ✅ **Transactionlarni qisqa tuting**
+4. ✅ **SELECT FOR UPDATE ni to'g'ri ishlating**
+5. ✅ **Monitoring va logging qo'ying**
+
+### Oxirgi marta: **OSHXONA QOIDASI** 🍳
+> "Agar 2 ta oshpaz bir vaqtda ishlasa, ikkalasi ham:
+> 1-chi GO'SHT, 2-chi SABZI tartibida olishi kerak.
+> Aks holda - DEADLOCK!"
+
+---
+
+**Bu misolni eslab qoling - hayotingiz davomida hech qachon deadlock bilan muammoga duch kelmaysiz! 🎯**

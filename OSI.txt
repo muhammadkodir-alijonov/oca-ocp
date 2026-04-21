@@ -1,0 +1,348 @@
+================================================================================
+                    OSI MODELI - TO'LIQ QO'LLANMA
+================================================================================
+
+OSI (Open Systems Interconnection) Modeli Nima? 
+------------------------------------------------
+OSI modeli - bu tarmoq aloqasini 7 ta qatlamga bo'lib tushuntiruvchi 
+standart model.  U 1984-yilda ISO (International Organization for 
+Standardization) tomonidan yaratilgan. 
+
+
+================================================================================
+                    OSI MODELINING 7 TA QATLAMI
+================================================================================
+
++-------------------------------------------------------------+
+|  7.  APPLICATION LAYER (Ilova Qatlami)                       |
+|     HTTP, HTTPS, FTP, SMTP, DNS, SSH, Telnet                |
++-------------------------------------------------------------+
+|  6. PRESENTATION LAYER (Taqdimot Qatlami)                   |
+|     SSL/TLS, JPEG, GIF, PNG, ASCII, Shifrlash               |
++-------------------------------------------------------------+
+|  5. SESSION LAYER (Sessiya Qatlami)                         |
+|     NetBIOS, RPC, PPTP, Sessiyalarni boshqarish             |
++-------------------------------------------------------------+
+|  4. TRANSPORT LAYER (Transport Qatlami)                     |
+|     TCP, UDP, Portlar, Segmentatsiya                        |
++-------------------------------------------------------------+
+|  3. NETWORK LAYER (Tarmoq Qatlami)                          |
+|     IP, ICMP, Routerlar, IP manzillar                       |
++-------------------------------------------------------------+
+|  2. DATA LINK LAYER (Ma'lumotlar Kanali Qatlami)            |
+|     Ethernet, MAC manzillar, Switchlar, Frames              |
++-------------------------------------------------------------+
+|  1. PHYSICAL LAYER (Fizik Qatlam)                           |
+|     Kabellar, Hub, Bitlar, Elektr signallari                |
++-------------------------------------------------------------+
+
+
+================================================================================
+        REQUEST SERVERGA QANDAY BORADI?  (BATAFSIL JARAYON)
+================================================================================
+
+Tasavvur qiling, siz brauzerda https://github.com saytini ochyapsiz: 
+
+
+1-BOSQICH:  APPLICATION LAYER (Qatlam 7)
+----------------------------------------
++----------------------------------------+
+|  Brauzer: "github.com sahifasini ber!" |
+|                                        |
+|  HTTP Request yaratiladi:               |
+|  GET / HTTP/1.1                        |
+|  Host: github.com                      |
+|  User-Agent: Chrome/120.0              |
+|  Accept: text/html                     |
++----------------------------------------+
+
+Nima bo'ladi: 
+- Foydalanuvchi URL kiritadi
+- Brauzer HTTP/HTTPS request yaratadi
+- DNS so'rovi yuboriladi (github.com -> 140.82.121.4)
+
+
+2-BOSQICH: PRESENTATION LAYER (Qatlam 6)
+-----------------------------------------
++----------------------------------------+
+|  Ma'lumotlar tayyorlanadi:             |
+|                                        |
+|  * HTTPS uchun TLS/SSL shifrlash       |
+|  * Ma'lumotlar formati belgilanadi     |
+|  * Siqish (Compression) qo'llanadi     |
+|                                        |
+|  "GET / HTTP/1.1..." -> [Shifrlangan]  |
++----------------------------------------+
+
+Nima bo'ladi:
+- SSL/TLS handshake (qo'l siqish) amalga oshiriladi
+- Ma'lumotlar shifrlanadi
+- Sertifikatlar tekshiriladi
+
+
+3-BOSQICH:  SESSION LAYER (Qatlam 5)
+------------------------------------
++----------------------------------------+
+|  Sessiya o'rnatiladi:                  |
+|                                        |
+|  * Ulanish ochiladi                    |
+|  * Session ID yaratiladi               |
+|  * Sinxronizatsiya nuqtalari           |
+|                                        |
+|  Client <---- Session ----> Server     |
++----------------------------------------+
+
+Nima bo'ladi:
+- Client va Server o'rtasida sessiya ochiladi
+- Aloqa boshqariladi
+- Ulanish holati kuzatiladi
+
+
+4-BOSQICH: TRANSPORT LAYER (Qatlam 4)
+--------------------------------------
++----------------------------------------+
+|  TCP Segmentatsiya:                    |
+|                                        |
+|  Ma'lumot -> [Segment 1][Segment 2]...  |
+|                                        |
+|  TCP Header qo'shiladi:                 |
+|  +------------------------------+      |
+|  | Source Port:  54321           |      |
+|  | Dest Port: 443 (HTTPS)       |      |
+|  | Sequence Number: 1000        |      |
+|  | ACK Number: 0                |      |
+|  | Flags: SYN                   |      |
+|  +------------------------------+      |
++----------------------------------------+
+
+TCP 3-Way Handshake: 
+
+    Client                     Server
+       |                          |
+       | ---- SYN ------------->  |  (1.  Ulanish so'rovi)
+       |                          |
+       | <--- SYN-ACK ----------  |  (2. Tasdiqlash)
+       |                          |
+       | ---- ACK ------------->  |  (3. Ulanish o'rnatildi)
+       |                          |
+       | <----- DATA ---------->  |  (Ma'lumot almashish)
+
+
+5-BOSQICH: NETWORK LAYER (Qatlam 3)
+------------------------------------
++----------------------------------------+
+|  IP Packet yaratiladi:                 |
+|                                        |
+|  +------------------------------+      |
+|  | IP Header:                   |      |
+|  | Source IP: 192.168.1.100     |      |
+|  | Dest IP: 140.82.121.4        |      |
+|  | TTL: 64                      |      |
+|  | Protocol: TCP (6)            |      |
+|  +------------------------------+      |
+|  | [TCP Segment + Data]         |      |
+|  +------------------------------+      |
++----------------------------------------+
+
+Routing jarayoni: 
+
+Sizning kompyuter -> Router 1 -> Router 2 -> ...  -> GitHub Server
+
+Har bir routerda:
+1. IP manzil tekshiriladi
+2. Routing table'dan yo'l topiladi
+3. Keyingi router'ga yo'naltiriladi
+
+
+6-BOSQICH: DATA LINK LAYER (Qatlam 2)
+--------------------------------------
++----------------------------------------+
+|  Ethernet Frame yaratiladi:            |
+|                                        |
+|  +------------------------------+      |
+|  | Preamble:  10101010...         |      |
+|  | Dest MAC: AA:BB:CC: DD:EE: FF  |      |
+|  | Source MAC:  11:22:33:44:55:66|      |
+|  | Type: 0x0800 (IPv4)          |      |
+|  +------------------------------+      |
+|  | [IP Packet]                  |      |
+|  +------------------------------+      |
+|  | FCS (Error Check)            |      |
+|  +------------------------------+      |
++----------------------------------------+
+
+ARP Jarayoni (MAC manzil topish):
+
+"Kim 192.168.1.1 (Gateway)?" -> Broadcast
+Gateway: "Men!  MAC:  AA:BB:CC: DD:EE: FF"
+
+
+7-BOSQICH: PHYSICAL LAYER (Qatlam 1)
+-------------------------------------
++----------------------------------------+
+|  Bitlar elektr signallariga aylanadi:  |
+|                                        |
+|  Frame -> 01101001 01110100...          |
+|                                        |
+|  ---+---+---+---+---+---+---+---       |
+|   1 | 0 | 1 | 1 | 0 | 1 | 0 | 0        |
+|  ---+---+---+---+---+---+---+---       |
+|      |   |   |   |   |   |   |         |
+|  Elektr/Optik signallar                |
++----------------------------------------+
+
+Fizik muhit: 
+- Ethernet kabeli (Cat5e, Cat6)
+- Wi-Fi (radio to'lqinlar)
+- Fiber optik (yorug'lik)
+
+
+================================================================================
+                ENCAPSULATION (QADOQLASH) JARAYONI
+================================================================================
+
+   Application Data
+   +----------------------------------------+
+   |         "GET / HTTP/1.1..."            |
+   +----------------------------------------+
+                        |
+                        V
+   Presentation (Shifrlash)
+   +----------------------------------------+
+   |      [Shifrlangan ma'lumot]            |
+   +----------------------------------------+
+                        |
+                        V
+   Session (Sessiya boshqaruvi)
+   +----------------------------------------+
+   | Session |    [Shifrlangan data]        |
+   +----------------------------------------+
+                        |
+                        V
+   Transport (TCP Segment)
+   +----------------------------------------+
+   | TCP Header |        Data               | <- SEGMENT
+   +----------------------------------------+
+                        |
+                        V
+   Network (IP Packet)
+   +----------------------------------------+
+   | IP Header | TCP Header |    Data       | <- PACKET
+   +----------------------------------------+
+                        |
+                        V
+   Data Link (Ethernet Frame)
+   +----------------------------------------+
+   |Frame| IP | TCP |   Data   | FCS |      | <- FRAME
+   +----------------------------------------+
+                        |
+                        V
+   Physical (Bitlar)
+   +----------------------------------------+
+   | 0 1 1 0 1 0 0 1 0 1 1 1 0 1 0 0 ...     | <- BITS
+   +----------------------------------------+
+
+
+================================================================================
+                TO'LIQ REQUEST-RESPONSE JARAYONI
+================================================================================
+
++------------------+                           +------------------+
+|    CLIENT        |                           |     SERVER       |
+|  (Siz komputer)  |                           |   (GitHub)       |
++--------+---------+                           +--------+---------+
+         |                                              |
+    +----+----+                                    +----+----+
+    | Layer 7 | ======= HTTP Request ============> | Layer 7 |
+    | Layer 6 | ======= Shifrlash ===============> | Layer 6 |
+    | Layer 5 | ======= Session =================> | Layer 5 |
+    | Layer 4 | ======= TCP Segments ============> | Layer 4 |
+    | Layer 3 | ======= IP Packets ==============> | Layer 3 |
+    | Layer 2 | ======= Frames ==================> | Layer 2 |
+    | Layer 1 | ======= Bits (Signal) ===========> | Layer 1 |
+    +----+----+                                    +----+----+
+         |                                              |
+         |         +---------------------+              |
+         |         |    INTERNET         |              |
+         +-------->|  (Routerlar orqali) |<-------------+
+                   |  TTL: 64->63->62...  |
+                   +---------------------+
+
+
+================================================================================
+                        PROTOKOLLAR JADVALI
+================================================================================
+
++-------------+-------+---------------------------+------------------+---------------+
+| Qatlam      | Raqam | Protokollar               | Qurilmalar       | Ma'lumot      |
++-------------+-------+---------------------------+------------------+---------------+
+| Application |   7   | HTTP, HTTPS, FTP, SMTP,   | Gateway,         | Data          |
+|             |       | DNS, SSH                  | Firewall         |               |
++-------------+-------+---------------------------+------------------+---------------+
+| Presentation|   6   | SSL/TLS, JPEG, MPEG,      | Gateway          | Data          |
+|             |       | ASCII                     |                  |               |
++-------------+-------+---------------------------+------------------+---------------+
+| Session     |   5   | NetBIOS, RPC, PPTP        | Gateway          | Data          |
++-------------+-------+---------------------------+------------------+---------------+
+| Transport   |   4   | TCP, UDP                  | Firewall         | Segment/      |
+|             |       |                           |                  | Datagram      |
++-------------+-------+---------------------------+------------------+---------------+
+| Network     |   3   | IP, ICMP, ARP, OSPF       | Router           | Packet        |
++-------------+-------+---------------------------+------------------+---------------+
+| Data Link   |   2   | Ethernet, PPP, MAC        | Switch, Bridge   | Frame         |
++-------------+-------+---------------------------+------------------+---------------+
+| Physical    |   1   | Ethernet (fizik), USB,    | Hub, Repeater,   | Bits          |
+|             |       | DSL                       | Kabel            |               |
++-------------+-------+---------------------------+------------------+---------------+
+
+
+================================================================================
+                        TCP vs UDP FARQI
+================================================================================
+
++---------------------------------+---------------------------------+
+|            TCP                  |             UDP                 |
++---------------------------------+---------------------------------+
+| * Connection-oriented           | * Connectionless                |
+| * Ishonchli (Reliable)          | * Ishonchsiz (Unreliable)       |
+| * 3-way handshake               | * Handshake yo'q                |
+| * Tartibni saqlaydi             | * Tartib kafolatlanmaydi        |
+| * Sekinroq                      | * Tezroq                        |
+| * HTTP, HTTPS, FTP, Email       | * DNS, Video streaming, Gaming  |
++---------------------------------+---------------------------------+
+
+
+================================================================================
+                    ESLAB QOLISH UCHUN MNEMONIKA
+================================================================================
+
+Yuqoridan pastga (7->1):
+"All People Seem To Need Data Processing"
+ Application, Presentation, Session, Transport, Network, Data Link, Physical
+
+Pastdan yuqoriga (1->7):
+"Please Do Not Throw Sausage Pizza Away"
+ Physical, Data Link, Network, Transport, Session, Presentation, Application
+
+
+================================================================================
+                            XULOSA
+================================================================================
+
+Har safar siz internet sahifasini ochganingizda:
+
+1. BRAUZER so'rov yaratadi (Layer 7)
+2. SSL/TLS shifrlaydi (Layer 6)
+3. SESSIYA o'rnatiladi (Layer 5)
+4. TCP segmentlarga bo'ladi (Layer 4)
+5. IP yo'naltiriladi (Layer 3)
+6. MAC manzillar qo'shiladi (Layer 2)
+7. ELEKTR SIGNALLARI yuboriladi (Layer 1)
+
+Va bu jarayon bir necha millisekund ichida amalga oshadi! 
+
+
+================================================================================
+                    Muallif:  GitHub Copilot
+                    Sana: 2025-yil
+================================================================================
